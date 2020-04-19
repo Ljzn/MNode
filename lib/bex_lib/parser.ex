@@ -107,7 +107,8 @@ defmodule BexLib.Parser do
         tx_count: pmt.num_transactions,
         hashes: pmt.hashes |> Enum.map(fn x -> x |> Binary.reverse() |> Binary.to_hex() end)
       }
-    } |> add_information_for_mbk()
+    }
+    |> add_information_for_mbk()
   end
 
   defp clean_pmt_bits(list) do
@@ -166,6 +167,6 @@ defmodule BexLib.Parser do
       |> BexLib.PMT.find_proved_hashes(mbk.partial_merkle_tree.hashes)
       |> BexLib.PMT.validate()
 
-    Map.put(mbk, :information, "This is a proof for these txids: #{inspect proved_txids}")
+    Map.put(mbk, :information, "This is a proof for these txids: #{inspect(proved_txids)}")
   end
 end

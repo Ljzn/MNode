@@ -49,11 +49,13 @@ defmodule BexLib.Secp256k1 do
     hashed = :crypto.hash(:sha256, msg)
     hex_priv = Binary.to_hex(priv)
     k = :crypto.hash(:sha256, secret) |> :binary.decode_unsigned()
-    k = if k < @params.n do
-      k
-    else
-      k - @params.n
-    end
+
+    k =
+      if k < @params.n do
+        k
+      else
+        k - @params.n
+      end
 
     NodeJS.call!("secp256k1", [hex_priv, Binary.to_hex(hashed), Integer.to_string(k)])
     |> Binary.from_hex()
@@ -125,5 +127,4 @@ defmodule BexLib.Secp256k1 do
   #     point_mul(point_double(p), d |> div_int(2))
   #   end
   # end
-
 end

@@ -252,11 +252,13 @@ defmodule BexLib.Txmaker do
         hashed = sha256(to_be_hashed)
 
         option_secret = opts[:secret_for_k]
-        signature = (if option_secret do
+
+        signature =
+          if option_secret do
             BexLib.Secp256k1.sign_with_secret_for_r(private_key, hashed, option_secret)
           else
             Crypto.sign(private_key, hashed)
-          end) <> <<0x41>>
+          end <> <<0x41>>
 
         script_sig =
           join([
@@ -315,11 +317,13 @@ defmodule BexLib.Txmaker do
   end
 
   def get_fee_from_size(size) do
-    size = if is_float(size) do
-      Decimal.from_float(size)
-    else
-      Decimal.cast(size)
-    end
+    size =
+      if is_float(size) do
+        Decimal.from_float(size)
+      else
+        Decimal.cast(size)
+      end
+
     # 体积乘以费率得到估计的手续费
     Decimal.mult(size, @sat_per_byte) |> Decimal.round(0, :up)
   end

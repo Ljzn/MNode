@@ -179,6 +179,7 @@ defmodule BexWeb.IndexLive do
   def handle_event("recast_to_submit", %{"id" => id, "satoshis" => n}, socket) do
     n = Decimal.cast(n)
     id = String.to_integer(id)
+
     case CoinManager.recast(id, n) do
       {:ok, _, hex_tx} ->
         Bitindex.broadcast_hex_tx(hex_tx)

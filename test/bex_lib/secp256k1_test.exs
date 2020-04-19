@@ -26,5 +26,4 @@ defmodule Secp256k1Test do
   defp verify(msg, sig, pk) do
     :crypto.verify(:ecdsa, :sha256, {:digest, msg}, sig, [pk, :secp256k1])
   end
-
 end

@@ -64,13 +64,13 @@ defmodule BexWeb.GenesisLive do
   end
 
   def handle_event("lock", %{"secret1" => secret}, socket) do
-    send self(), {:do_lock, secret}
+    send(self(), {:do_lock, secret})
 
     {:noreply, socket |> assign(:secret1, secret) |> assign(:secret2, secret)}
   end
 
   def handle_event("unlock", %{"secret2" => secret}, socket) do
-    send self(), {:do_unlock, secret}
+    send(self(), {:do_unlock, secret})
 
     {:noreply, socket |> assign(:secret2, secret)}
   end
@@ -98,7 +98,7 @@ defmodule BexWeb.GenesisLive do
 
     {:ok, txid, _hex_tx} = CoinManager.send_to_r_puzzle(key.id, secret, @coin_sat)
 
-    {:noreply, assign(socket, %{txid1: txid, balance: balance - 1 })}
+    {:noreply, assign(socket, %{txid1: txid, balance: balance - 1})}
   end
 
   def handle_info({:do_unlock, secret}, socket) do

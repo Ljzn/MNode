@@ -411,6 +411,7 @@ defmodule Bex.CoinManager do
 
   def unlock_r_puzzle(pkid, address, secret, coin_sat) do
     lock_script = Script.rpuzzle(secret)
+
     inputs =
       from(u in Utxo,
         where: u.lock_script == ^lock_script,
@@ -426,7 +427,7 @@ defmodule Bex.CoinManager do
     fee = Txmaker.get_fee_from_size(bytes)
 
     outputs = [Utxo.address_utxo(address, Decimal.sub(hd(inputs).value, fee))]
-    {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat, false, [secret_for_k: secret])
+    {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat, false, secret_for_k: secret)
     Txrepo.add(txid, hex_tx)
     {:ok, txid, hex_tx}
   end
@@ -437,21 +438,29 @@ defmodule Bex.CoinManager do
   def send_to_r_puzzle(pkid, secret, coin_sat) do
     {:ok, inputs} = do_get_coins(pkid, 1, coin_sat)
     lock_script = Script.rpuzzle(secret)
-    outputs = [%Utxo{
-      value: Decimal.cast(0),
-      lock_script: lock_script,
-      type: :dust
-    }]
+
+    outputs = [
+      %Utxo{
+        value: Decimal.cast(0),
+        lock_script: lock_script,
+        type: :dust
+      }
+    ]
+
     {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat, :not_save)
     bytes = String.length(hex_tx) / 2
     fee = Txmaker.get_fee_from_size(bytes)
     value = Decimal.sub(coin_sat, fee)
-    outputs = [%Utxo{
-      value: value,
-      lock_script: lock_script,
-      type: :dust,
-      private_key_id: pkid
-    }]
+
+    outputs = [
+      %Utxo{
+        value: value,
+        lock_script: lock_script,
+        type: :dust,
+        private_key_id: pkid
+      }
+    ]
+
     {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat)
     Txrepo.add(txid, hex_tx)
     {:ok, txid, hex_tx}

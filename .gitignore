@@ -42,3 +42,5 @@ prod.sh
 
 /.elixir_ls/
 /cub/
+
+.tmp/

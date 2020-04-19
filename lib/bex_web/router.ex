@@ -24,6 +24,8 @@ defmodule BexWeb.Router do
     live "/parser", ParserLive
     live "/parser/:rawtx", ParserLive
     live "/parser/txoutproof/:rawtxoutproof", ParserLive
+    live "/paymail", PaymailLive
+    live "/paymail/:mail", PaymailLive
     get "/ad", PageController, :ad
     get "/gun", PageController, :gun
     get "/chat", PageController, :chat

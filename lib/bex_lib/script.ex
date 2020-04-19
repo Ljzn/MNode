@@ -123,6 +123,7 @@ defmodule BexLib.Script do
     r =
       Secp256k1.sign_with_secret_for_r(<<0::256>>, "", secret)
       |> Secp256k1.get_r()
+
     [
       :OP_OVER,
       :OP_3,
@@ -137,7 +138,8 @@ defmodule BexLib.Script do
       Crypto.hash160(r),
       :OP_EQUALVERIFY,
       :OP_CHECKSIG
-    ] |> to_binary()
+    ]
+    |> to_binary()
   end
 
   def return(contents) when is_list(contents) do
