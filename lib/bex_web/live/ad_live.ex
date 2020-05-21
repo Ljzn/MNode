@@ -19,6 +19,7 @@ defmodule BexWeb.AdLive do
       |> assign(:balance, 0)
       |> assign(:buy_laba, 0)
       |> assign(:ad_count, 0)
+      |> assign(:sent_box, [])
       |> assign(:content, "")
     }
   end
@@ -40,15 +41,21 @@ defmodule BexWeb.AdLive do
         <label>不超过 200 汉字</label>
         <br/>
         <label>发送次数:</label>
-        <input placeholder=1 type="number" name="amount" />
+        <input placeholder=0 type="number" name="amount" />
         <br/>
         <button type="submit">发送</button>
       </from>
     </section>
 
     <section>
+      <%= for txid <- @sent_box do %>
+        <li><a href="https://whatsonchain.com/tx/<%= txid %>"><%= txid %></a></li>
+      <% end %>
+    </section>
+
+    <section>
       <h2>使用说明</h2>
-      <p>可在<a target="_blank" href="https://genesis.bitdb.network/query/1FnauZ9aUH2Bex6JzdcV4eNX7oLSSEbxtN/ewogICJ2IjogMywKICAicSI6IHsKICAgICJmaW5kIjogewogICAgICAib3V0LmgyIjogImU0YjhhZGU1OGQ4ZWU0YmFiYWU2YjA5MWU1ODViMWU1OTI4Y2U1OWJiZGU2ODg5MGU3YWI4YjM3MzBlNTkxYThlNWI5YjQiCiAgICB9LAogICAgInByb2plY3QiOiB7CiAgICAgICJvdXQuczIiOiAxLAogICAgICAib3V0LnMzIjogMSwKICAgICAgIm91dC5sczMiOiAxLAogICAgICAiaW4iOiAxCiAgICB9LAogICAgImxpbWl0IjogNTAwMAogIH0sCiAgInIiOiB7CiAgICAiZiI6ICJbLltdIHwge2FkOiAoLm91dFswXS5zMyArIC5vdXRbMF0ubHMzKSwgZnJvbTogLmluWzBdLmUuYX1dIHwgW3JlZHVjZSAuW10gYXMgJHggKHt9OyAuIHwgaWYgJHggPT0gLnQgdGhlbiAuIHwgLmNvdW50ICs9IDEgZWxzZSAuIHwgLnIgKz0gW3thZDogLnQuYWQsIGZyb206IC50LmZyb20sIGNvdW50OiAuY291bnR9XSB8IC50ID0gJHggfCAuY291bnQgPSAxIGVuZCApXSB8IC5bXSB8IC50LmNvdW50ID0gLmNvdW50IHwgLnIgKz0gWy50XSB8IC5yIHwgZGVsKC5bMF0pIgogIH0KfQ==">这里</a>查看全部广告. </p>
+      <p>可在<a target="_blank" href="https://bitcoinblocks.live/">这里</a>查看实时交易. </p>
       <p>请勿充值大量金额. 任何财产损失, 本网站概不负责.</p>
       <p>私钥ID保存在本地, 使用过程中请勿删除浏览器缓存.</p>
       <p>每条广告花费 1 个小喇叭, 每个小喇叭价值 1000 聪.</p>
@@ -98,7 +105,7 @@ defmodule BexWeb.AdLive do
     ad_count = socket.assigns.ad_count + 1
     balance = socket.assigns.balance
 
-    CoinManager.send_opreturn(key.id, ["中华人民共和国成立70周年", c], @coin_sat,
+    {:ok, txid, _} = CoinManager.send_opreturn(key.id, [c], @coin_sat,
       change_to: "1FUBsjgSju23wGqR47ywynyynigxvtTCyZ"
     )
 
@@ -106,7 +113,9 @@ defmodule BexWeb.AdLive do
 
     :timer.sleep(500)
 
-    {:noreply, assign(socket, %{ad_count: ad_count, balance: balance - 1})}
+    sent_box = [txid | socket.assigns.sent_box]
+
+    {:noreply, assign(socket, %{sent_box: sent_box, ad_count: ad_count, balance: balance - 1})}
   end
 
   defp count_coins(key) do

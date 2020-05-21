@@ -55,7 +55,8 @@ defmodule Bex.MixProject do
       {:phoenix_live_view, "~> 0.3.1"},
       {:sv_api, github: "terriblecodebutwork/sv_api"},
       {:tentacat, github: "terriblecodebutwork/tentacat"},
-      {:tesla, "~> 1.2.1"}
+      {:tesla, "~> 1.3", override: true},
+      {:manic, "~> 0.0.1"}
     ]
   end
 

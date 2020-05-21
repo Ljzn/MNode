@@ -1,0 +1,5 @@
+LOG:  database system was shut down at 2020-05-18 11:57:08 CST
+LOG:  MultiXact member wraparound protections are now enabled
+LOG:  autovacuum launcher started
+LOG:  database system is ready to accept connections
+FATAL:  database "zhanglinjie" does not exist

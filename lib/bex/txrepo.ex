@@ -36,23 +36,36 @@ defmodule Bex.Txrepo do
     GenServer.cast(__MODULE__, {:pending, info})
   end
 
-  def send_via_quickapi(tx) do
-    HTTPoison.post("http://localhost:8000", tx)
-  end
-
   defp try_broadcast(txid, tx) do
     Logger.debug("#{__MODULE__} broadcasting #{txid}: #{tx}")
-    send_via_quickapi(tx)
-    r = SvApi.broadcast(tx)
-    Logger.debug(inspect(r))
+    r = send_via_merchant_api(tx)
+
+    r
+    |> inspect()
+    |> Logger.debug()
 
     case r do
-      {:ok, _} ->
+      {:ok, %{"return_result" => "success"}} ->
         :ok
+
+      {:ok, any} ->
+        pending({txid, tx, inspect(any)})
 
       {:error, msg} ->
         pending({txid, tx, msg})
     end
+  end
+
+  def send_via_merchant_api(tx) do
+    miner = mempool()
+    Manic.TX.push(miner, tx)
+  end
+
+  defp mempool(), do: Manic.miner :mempool, headers: [{"token", "561b756d12572020ea9a104c3441b71790acbbce95a6ddbf7e0630971af9424b"}]
+
+  def tx_status(txid) do
+    miner = mempool()
+    Manic.TX.status!(miner, txid)
   end
 
   def turn_on() do
