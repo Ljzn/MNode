@@ -8,7 +8,7 @@ defmodule BexLib.Txmaker do
   alias Bex.Repo
   require Logger
 
-  @sat_per_byte Decimal.cast(0.25)
+  @sat_per_byte Decimal.cast(0.5)
 
   @doc """
   hex raw tx -> txid(hex string)
@@ -148,7 +148,8 @@ defmodule BexLib.Txmaker do
 
   defp sequence(n \\ 0xFFFFFFFF)
   defp sequence(nil), do: sequence()
-  defp sequence(n) when is_integer(n) and n <= 0xFFFFFFFF, do: n |> to_bytes(4, :little)
+  defp sequence(-1), do: sequence()
+  defp sequence(n) when is_integer(n) and n >= 0 and n <= 0xFFFFFFFF, do: n |> to_bytes(4, :little)
 
   @doc """
   Params: utxos of input and output
@@ -219,19 +220,7 @@ defmodule BexLib.Txmaker do
 
     lock_time = opts[:locktime] || 0x00
 
-    sequence =
-      case opts[:sequence] do
-        nil ->
-          if lock_time > 0 do
-            # avoid the locktime be ignored
-            sequence(1)
-          else
-            sequence()
-          end
-
-        any ->
-          sequence(any)
-      end
+    sequence = sequence(opts[:sequence])
 
     lock_time = lock_time |> to_bytes(4, :little)
     hash_type = 0x41 |> to_bytes(4, :little)

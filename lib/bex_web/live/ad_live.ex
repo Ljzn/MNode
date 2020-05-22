@@ -47,6 +47,9 @@ defmodule BexWeb.AdLive do
         <label>Locktime</label>
         <%= datetime_local_input f, :locktime %>
         <br/>
+        <label>Sequence</label>
+        <%= number_input f, :seq %>
+        <br/>
         <label>Timezone</label>
         <%= select f, :tz, (for x <- -11..12 do
           y = integer_to_tz(x)
@@ -58,8 +61,9 @@ defmodule BexWeb.AdLive do
     </section>
 
     <section>
-      <%= for txid <- @sent_box do %>
+      <%= for {txid, hex_tx} <- @sent_box do %>
         <li><a href="https://whatsonchain.com/tx/<%= txid %>"><%= txid %></a></li>
+        <p style="font-size: x-small"><%= hex_tx %></p>
       <% end %>
     </section>
 
@@ -96,12 +100,16 @@ defmodule BexWeb.AdLive do
 
   def handle_event(
         "save",
-        %{"foo" => %{"content" => c, "locktime" => locktime, "times" => a, "tz" => tz}},
+        %{"foo" => %{"content" => c, "locktime" => locktime, "times" => a, "tz" => tz, "seq" => seq}},
         socket
       ) do
     {:ok, ts, _} = DateTime.from_iso8601(locktime <> ":00" <> tz)
     locktime = DateTime.to_unix(ts)
-    IO.inspect(locktime)
+
+    seq = case Integer.parse(seq) do
+      {x, _} -> x
+      _ -> -1
+    end
 
     balance = socket.assigns.balance
 
@@ -112,7 +120,7 @@ defmodule BexWeb.AdLive do
       end
 
     if a !== 0 and a <= balance and byte_size(c) <= 800 do
-      send(self(), {:do_send, a, c, locktime})
+      send(self(), {:do_send, a, c, locktime, seq})
     end
 
     {:noreply, assign(socket, :sending, true) |> assign(:content, c)}
@@ -127,26 +135,27 @@ defmodule BexWeb.AdLive do
     {:noreply, assign(socket, %{loading: false, balance: balance})}
   end
 
-  def handle_info({:do_send, 0, _, _}, socket) do
+  def handle_info({:do_send, 0, _, _, _}, socket) do
     {:noreply, socket}
   end
 
-  def handle_info({:do_send, a, c, locktime}, socket) do
+  def handle_info({:do_send, a, c, locktime, seq}, socket) do
     key = socket.assigns.key
     ad_count = socket.assigns.ad_count + 1
     balance = socket.assigns.balance
 
-    {:ok, txid, _} =
+    {:ok, txid, hex_tx} =
       CoinManager.send_opreturn(key.id, [c], @coin_sat,
         change_to: "1FUBsjgSju23wGqR47ywynyynigxvtTCyZ",
-        locktime: locktime
+        locktime: locktime,
+        sequence: seq
       )
 
-    send(self(), {:do_send, a - 1, c, locktime})
+    send(self(), {:do_send, a - 1, c, locktime, seq})
 
     :timer.sleep(500)
 
-    sent_box = [txid | socket.assigns.sent_box]
+    sent_box = [{txid, hex_tx} | socket.assigns.sent_box]
 
     {:noreply, assign(socket, %{sent_box: sent_box, ad_count: ad_count, balance: balance - 1})}
   end
