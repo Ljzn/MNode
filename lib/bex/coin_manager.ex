@@ -380,7 +380,7 @@ defmodule Bex.CoinManager do
           {:error, msg}
 
         {:ok, inputs, outputs} ->
-          {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat)
+          {:ok, txid, hex_tx} = Utxo.make_tx(inputs, outputs, coin_sat, false, opts)
           Txrepo.add(txid, hex_tx)
           {:ok, txid, hex_tx}
       end

@@ -59,7 +59,7 @@ defmodule BexLib.Txmaker do
         txin.txindex,
         txin.script_len,
         txin.script,
-        sequence()
+        txin.sequence
       ])
     end
     |> join()
@@ -146,7 +146,9 @@ defmodule BexLib.Txmaker do
     }
   end
 
-  defp sequence(), do: 0xFFFFFFFF |> to_bytes(4, :little)
+  defp sequence(n \\ 0xFFFFFFFF)
+  defp sequence(nil), do: sequence()
+  defp sequence(n) when is_integer(n) and n <= 0xFFFFFFFF, do: n |> to_bytes(4, :little)
 
   @doc """
   Params: utxos of input and output
@@ -198,12 +200,40 @@ defmodule BexLib.Txmaker do
       - {address, amount(Decimal satoshis)}
       - %{type: "safe", data: binary or list of binary}
       - %{type: "script", script: binary script}
+
+  options:
+    - sequence: integer
+    - locktime: integer
+
+    if all inputs in a transaction have sequence equal to UINT_MAX,
+    then locktime is ignored.
+
+    if locktime < 500_000_000, the integer is interpreted
+    as the block height after which this transaction can be accepted.
+    Otherwise the integer is interpreted as the UNIX timestamp after which
+    this transaction can be included in a block.
   """
   def create_p2pkh_transaction(inputs, outputs, opts \\ [])
       when is_list(inputs) and is_list(outputs) do
     version = 0x01 |> to_bytes(4, :little)
-    sequence = sequence()
-    lock_time = 0x00 |> to_bytes(4, :little)
+
+    lock_time = opts[:locktime] || 0x00
+
+    sequence =
+      case opts[:sequence] do
+        nil ->
+          if lock_time > 0 do
+            # avoid the locktime be ignored
+            sequence(1)
+          else
+            sequence()
+          end
+
+        any ->
+          sequence(any)
+      end
+
+    lock_time = lock_time |> to_bytes(4, :little)
     hash_type = 0x41 |> to_bytes(4, :little)
 
     input_count = int_to_varint(len(inputs))
@@ -273,6 +303,7 @@ defmodule BexLib.Txmaker do
           | script: script_sig,
             script_len: int_to_varint(len(script_sig))
         }
+        |> Map.put(:sequence, sequence)
       end
 
     join([

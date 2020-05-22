@@ -3,3 +3,5 @@ LOG:  MultiXact member wraparound protections are now enabled
 LOG:  autovacuum launcher started
 LOG:  database system is ready to accept connections
 FATAL:  database "zhanglinjie" does not exist
+ERROR:  column u0.sequence does not exist at character 100
+STATEMENT:  SELECT u0."id", u0."index", u0."lock_script", u0."txid", u0."value", u0."block_height", u0."type", u0."sequence", u0."private_key_id" FROM "utxos" AS u0 WHERE ((u0."private_key_id" = $1) AND (u0."type" = 'coin')) LIMIT 1

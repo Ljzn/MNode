@@ -29,6 +29,7 @@ defmodule Bex.Wallet.Utxo do
     field :value, :decimal
     field :block_height, :integer
     field :type, UtxoType
+    field :sequence, :binary, virtual: true
     belongs_to :private_key, PrivateKey
     # belongs_to :consumer, Mission, foreign_key: :consumer_id
     # belongs_to :producer, Mission, foreign_key: :producer_id

@@ -61,7 +61,11 @@ defmodule Bex.Txrepo do
     Manic.TX.push(miner, tx)
   end
 
-  defp mempool(), do: Manic.miner :mempool, headers: [{"token", "561b756d12572020ea9a104c3441b71790acbbce95a6ddbf7e0630971af9424b"}]
+  defp mempool(),
+    do:
+      Manic.miner(:mempool,
+        headers: [{"token", "561b756d12572020ea9a104c3441b71790acbbce95a6ddbf7e0630971af9424b"}]
+      )
 
   def tx_status(txid) do
     miner = mempool()

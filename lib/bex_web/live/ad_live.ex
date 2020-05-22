@@ -1,5 +1,6 @@
 defmodule BexWeb.AdLive do
   use Phoenix.LiveView
+  use Phoenix.HTML
   require Logger
 
   alias Bex.Wallet
@@ -21,6 +22,7 @@ defmodule BexWeb.AdLive do
       |> assign(:ad_count, 0)
       |> assign(:sent_box, [])
       |> assign(:content, "")
+      |> assign(:changeset, :foo)
     }
   end
 
@@ -35,16 +37,24 @@ defmodule BexWeb.AdLive do
     </section>
 
     <section>
-      <form phx-submit="laba">
-        <label>广告内容:</label>
-        <input value="<%= @content %>" name="content" ></input>
-        <label>不超过 200 汉字</label>
+      <%= f = form_for @changeset, "#", [phx_submit: :save] %>
+        <label>交易内容</label>
+        <%= text_input f, :content %>
         <br/>
-        <label>发送次数:</label>
-        <input placeholder=0 type="number" name="amount" />
+        <label>发送次数</label>
+        <%= number_input f, :times %>
         <br/>
-        <button type="submit">发送</button>
-      </from>
+        <label>Locktime</label>
+        <%= datetime_local_input f, :locktime %>
+        <br/>
+        <label>Timezone</label>
+        <%= select f, :tz, (for x <- -11..12 do
+          y = integer_to_tz(x)
+          {y, y}
+        end) %>
+        <br/>
+        <%= submit "Send" %>
+      </form>
     </section>
 
     <section>
@@ -63,20 +73,16 @@ defmodule BexWeb.AdLive do
     """
   end
 
-  def handle_event("laba", %{"amount" => a, "content" => c}, socket) do
-    balance = socket.assigns.balance
+  def integer_to_tz(x) when x >= 0 do
+    "+" <> padding(x)
+  end
 
-    a =
-      case Integer.parse(a) do
-        {x, _} -> x
-        _ -> 0
-      end
+  def integer_to_tz(x) do
+    "-" <> padding(-x)
+  end
 
-    if a !== 0 and a <= balance and byte_size(c) <= 800 do
-      send(self(), {:do_send, a, c})
-    end
-
-    {:noreply, assign(socket, :sending, true) |> assign(:content, c)}
+  defp padding(x) when x >= 0 do
+    Integer.to_string(x) |> String.pad_leading(2, "0")
   end
 
   def handle_event("flash", _, socket) do
@@ -88,6 +94,31 @@ defmodule BexWeb.AdLive do
     {:noreply, redirect(socket, to: "/")}
   end
 
+  def handle_event(
+        "save",
+        %{"foo" => %{"content" => c, "locktime" => locktime, "times" => a, "tz" => tz}},
+        socket
+      ) do
+    {:ok, ts, _} = DateTime.from_iso8601(locktime <> ":00" <> tz)
+    locktime = DateTime.to_unix(ts)
+    IO.inspect(locktime)
+
+    balance = socket.assigns.balance
+
+    a =
+      case Integer.parse(a) do
+        {x, _} -> x
+        _ -> 0
+      end
+
+    if a !== 0 and a <= balance and byte_size(c) <= 800 do
+      send(self(), {:do_send, a, c, locktime})
+    end
+
+    {:noreply, assign(socket, :sending, true) |> assign(:content, c)}
+    {:noreply, socket}
+  end
+
   def handle_info(:sync, socket) do
     key = socket.assigns.key
     Wallet.sync_utxos_of_private_key(key)
@@ -96,20 +127,22 @@ defmodule BexWeb.AdLive do
     {:noreply, assign(socket, %{loading: false, balance: balance})}
   end
 
-  def handle_info({:do_send, 0, _}, socket) do
+  def handle_info({:do_send, 0, _, _}, socket) do
     {:noreply, socket}
   end
 
-  def handle_info({:do_send, a, c}, socket) do
+  def handle_info({:do_send, a, c, locktime}, socket) do
     key = socket.assigns.key
     ad_count = socket.assigns.ad_count + 1
     balance = socket.assigns.balance
 
-    {:ok, txid, _} = CoinManager.send_opreturn(key.id, [c], @coin_sat,
-      change_to: "1FUBsjgSju23wGqR47ywynyynigxvtTCyZ"
-    )
+    {:ok, txid, _} =
+      CoinManager.send_opreturn(key.id, [c], @coin_sat,
+        change_to: "1FUBsjgSju23wGqR47ywynyynigxvtTCyZ",
+        locktime: locktime
+      )
 
-    send(self(), {:do_send, a - 1, c})
+    send(self(), {:do_send, a - 1, c, locktime})
 
     :timer.sleep(500)
 
