@@ -100,16 +100,32 @@ defmodule BexWeb.AdLive do
 
   def handle_event(
         "save",
-        %{"foo" => %{"content" => c, "locktime" => locktime, "times" => a, "tz" => tz, "seq" => seq}},
+        %{
+          "foo" => %{
+            "content" => c,
+            "locktime" => locktime,
+            "times" => a,
+            "tz" => tz,
+            "seq" => seq
+          }
+        },
         socket
       ) do
-    {:ok, ts, _} = DateTime.from_iso8601(locktime <> ":00" <> tz)
-    locktime = DateTime.to_unix(ts)
+    locktime =
+      case locktime do
+        "" ->
+          nil
 
-    seq = case Integer.parse(seq) do
-      {x, _} -> x
-      _ -> -1
-    end
+        _ ->
+          {:ok, ts, _} = DateTime.from_iso8601(locktime <> ":00" <> tz)
+          locktime = DateTime.to_unix(ts)
+      end
+
+    seq =
+      case Integer.parse(seq) do
+        {x, _} -> x
+        _ -> -1
+      end
 
     balance = socket.assigns.balance
 

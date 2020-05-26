@@ -149,7 +149,9 @@ defmodule BexLib.Txmaker do
   defp sequence(n \\ 0xFFFFFFFF)
   defp sequence(nil), do: sequence()
   defp sequence(-1), do: sequence()
-  defp sequence(n) when is_integer(n) and n >= 0 and n <= 0xFFFFFFFF, do: n |> to_bytes(4, :little)
+
+  defp sequence(n) when is_integer(n) and n >= 0 and n <= 0xFFFFFFFF,
+    do: n |> to_bytes(4, :little)
 
   @doc """
   Params: utxos of input and output

@@ -56,7 +56,8 @@ defmodule Bex.MixProject do
       {:sv_api, github: "terriblecodebutwork/sv_api"},
       {:tentacat, github: "terriblecodebutwork/tentacat"},
       {:tesla, "~> 1.3", override: true},
-      {:manic, "~> 0.0.1"}
+      {:manic, "~> 0.0.1"},
+      {:bsv, "~> 0.2"}
     ]
   end
 
