@@ -57,7 +57,7 @@ defmodule Bex.Txrepo do
   end
 
   def send_via_merchant_api(tx) do
-    miner = mempool()
+    miner = taal()
     Manic.TX.push(miner, tx)
   end
 
@@ -66,6 +66,8 @@ defmodule Bex.Txrepo do
       Manic.miner(:mempool,
         headers: [{"token", "561b756d12572020ea9a104c3441b71790acbbce95a6ddbf7e0630971af9424b"}]
       )
+
+  defp taal(), do: Manic.miner(:taal)
 
   def tx_status(txid) do
     miner = mempool()

@@ -8,6 +8,8 @@ defmodule BexLib.Txmaker do
   alias Bex.Repo
   require Logger
 
+  use Bitwise
+
   @sat_per_byte Decimal.cast(0.5)
 
   @doc """
@@ -67,49 +69,53 @@ defmodule BexLib.Txmaker do
 
   defp construct_output_block(outputs) do
     Enum.map(outputs, fn output ->
-      script =
-        case output do
-          %Utxo{lock_script: s} ->
-            s
-
-          {dest, _amount} ->
-            [
-              0x76,
-              0xA9,
-              0x14,
-              Key.address_to_public_key_hash(dest),
-              0x88,
-              0xAC
-            ]
-            |> join()
-
-          ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
-          %{type: "safe", data: data} ->
-            safe_type_pkscript(data)
-
-          %{type: "script", script: script} ->
-            script
-        end
-
-      amount =
-        case output do
-          %Utxo{value: v} ->
-            Decimal.to_integer(v)
-
-          %{type: "safe"} ->
-            0
-
-          %{type: "script"} ->
-            0
-        end
-
-      [
-        amount |> to_bytes(8, :little),
-        int_to_varint(len(script)),
-        script
-      ]
+      serialize_output(output)
     end)
     |> join()
+  end
+
+  defp serialize_output(output) do
+    script =
+      case output do
+        %Utxo{lock_script: s} ->
+          s
+
+        {dest, _amount} ->
+          [
+            0x76,
+            0xA9,
+            0x14,
+            Key.address_to_public_key_hash(dest),
+            0x88,
+            0xAC
+          ]
+          |> join()
+
+        ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
+        %{type: "safe", data: data} ->
+          safe_type_pkscript(data)
+
+        %{type: "script", script: script} ->
+          script
+      end
+
+    amount =
+      case output do
+        %Utxo{value: v} ->
+          Decimal.to_integer(v)
+
+        %{type: "safe"} ->
+          0
+
+        %{type: "script"} ->
+          0
+      end
+
+    [
+      amount |> to_bytes(8, :little),
+      int_to_varint(len(script)),
+      script
+    ]
   end
 
   defp safe_type_pkscript(data) do
@@ -196,6 +202,30 @@ defmodule BexLib.Txmaker do
     end
   end
 
+  ### Copied from libitx/bsv-ex https://github.com/libitx/bsv-ex/blob/master/lib/bsv/transaction/signature.ex
+  @sighash_all 0x01
+  @sighash_none 0x02
+  @sighash_single 0x03
+  @sighash_forkid 0x40
+  @sighash_anyonecanpay 0x80
+
+  @default_sighash @sighash_all ||| @sighash_forkid
+
+  defguard sighash_all?(sighash_type)
+           when (sighash_type &&& 31) == @sighash_all
+
+  defguard sighash_none?(sighash_type)
+           when (sighash_type &&& 31) == @sighash_none
+
+  defguard sighash_single?(sighash_type)
+           when (sighash_type &&& 31) == @sighash_single
+
+  defguard sighash_forkid?(sighash_type)
+           when (sighash_type &&& @sighash_forkid) != 0
+
+  defguard sighash_anyone_can_pay?(sighash_type)
+           when (sighash_type &&& @sighash_anyonecanpay) != 0
+
   @doc """
   params:
     - list of utxos
@@ -207,6 +237,7 @@ defmodule BexLib.Txmaker do
   options:
     - sequence: integer
     - locktime: integer
+    - sighash_types: [integer]
 
     if all inputs in a transaction have sequence equal to UINT_MAX,
     then locktime is ignored.
@@ -218,22 +249,26 @@ defmodule BexLib.Txmaker do
   """
   def create_p2pkh_transaction(inputs, outputs, opts \\ [])
       when is_list(inputs) and is_list(outputs) do
+    sighash_types = opts[:sighash_types] || for _ <- inputs, do: @default_sighash
+
     version = 0x01 |> to_bytes(4, :little)
 
     lock_time = opts[:locktime] || 0x00
 
+    ## FIXME every input has own sequence
     sequence = sequence(opts[:sequence])
 
     lock_time = lock_time |> to_bytes(4, :little)
-    hash_type = 0x41 |> to_bytes(4, :little)
 
     input_count = int_to_varint(len(inputs))
     output_count = int_to_varint(len(outputs))
 
     output_block = construct_output_block(outputs)
 
+    inputs_indexes = Enum.with_index(inputs)
+
     inputs =
-      for %Utxo{} = input <- inputs do
+      for {%Utxo{} = input, index} <- inputs_indexes do
         private_key_bn = Repo.preload(input, :private_key).private_key.bn
         script = input.lock_script
         script_len = int_to_varint(len(script))
@@ -241,15 +276,14 @@ defmodule BexLib.Txmaker do
         txindex = input.index |> to_bytes(4, :little)
         amount = input.value |> Decimal.to_integer() |> to_bytes(8, :little)
 
-        newTxIn(script, script_len, txid, txindex, amount, private_key_bn)
-      end
+        sighash = Enum.at(sighash_types, index)
 
-    hashPrevouts = double_sha256(join(for i <- inputs, do: [i.txid, i.txindex]))
-    hashSequence = double_sha256(join(for _i <- inputs, do: sequence))
-    hashOutputs = double_sha256(output_block)
+        txin = newTxIn(script, script_len, txid, txindex, amount, private_key_bn)
 
-    inputs =
-      for txin <- inputs do
+        hashPrevouts = get_prevouts_hash(inputs, sighash)
+        hashSequence = get_sequence_hash(inputs, sighash, sequence)
+        hashOutputs = get_outputs_hash(outputs, index, sighash)
+
         private_key = txin.private_key
         public_key = Key.private_key_to_public_key(private_key)
         public_key_len = len(public_key) |> to_bytes(1, :little)
@@ -267,7 +301,7 @@ defmodule BexLib.Txmaker do
             sequence,
             hashOutputs,
             lock_time,
-            hash_type
+            sighash |> to_bytes(4, :little)
           ])
 
         hashed = sha256(to_be_hashed)
@@ -279,7 +313,7 @@ defmodule BexLib.Txmaker do
             BexLib.Secp256k1.sign_with_secret_for_r(private_key, hashed, option_secret)
           else
             Crypto.sign(private_key, hashed)
-          end <> <<0x41>>
+          end <> <<sighash>>
 
         script_sig =
           join([
@@ -306,6 +340,42 @@ defmodule BexLib.Txmaker do
       lock_time
     ])
   end
+
+  defp get_prevouts_hash(_inputs, sighash_type)
+       when sighash_anyone_can_pay?(sighash_type),
+       do: :binary.copy(<<0>>, 32)
+
+  defp get_prevouts_hash(inputs, _sighash_type) do
+    double_sha256(join(for i <- inputs, do: [hex_to_bytes(i.txid) |> Binary.reverse(), i.index |> to_bytes(4, :little)] ))
+  end
+
+  defp get_sequence_hash(_inputs, sighash_type, _)
+       when sighash_anyone_can_pay?(sighash_type) or
+              sighash_single?(sighash_type) or
+              sighash_none?(sighash_type),
+       do: :binary.copy(<<0>>, 32)
+
+  defp get_sequence_hash(inputs, _sighash_type, sequence) do
+    double_sha256(join(for _i <- inputs, do: sequence))
+  end
+
+  defp get_outputs_hash(outputs, index, sighash_type)
+       when sighash_single?(sighash_type) and
+              index < length(outputs) do
+    outputs
+    |> Enum.at(index)
+    |> serialize_output()
+    |> double_sha256()
+  end
+
+  defp get_outputs_hash(outputs, _index, sighash_type)
+       when not sighash_none?(sighash_type) do
+    output_block = construct_output_block(outputs)
+    double_sha256(output_block)
+  end
+
+  defp get_outputs_hash(_outputs, _index, _sighash_type),
+    do: :binary.copy(<<0>>, 32)
 
   @doc """
   n_out will including opreturn output for falut tolerance.

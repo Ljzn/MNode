@@ -56,6 +56,16 @@ defmodule BexWeb.AdLive do
           {y, y}
         end) %>
         <br/>
+        <label>Sighash Type</label>
+        <%= select f, :sighash, [
+          {"all", 0x41},
+          {"none", 0x42},
+          {"single", 0x43},
+          {"all|any one can pay", 193},
+          {"none|anyonecanpay", 194},
+          {"single|anyonecanpay", 195}
+        ] %>
+        <br/>
         <%= submit "Send" %>
       </form>
     </section>
@@ -106,7 +116,8 @@ defmodule BexWeb.AdLive do
             "locktime" => locktime,
             "times" => a,
             "tz" => tz,
-            "seq" => seq
+            "seq" => seq,
+            "sighash" => sighash
           }
         },
         socket
@@ -118,7 +129,7 @@ defmodule BexWeb.AdLive do
 
         _ ->
           {:ok, ts, _} = DateTime.from_iso8601(locktime <> ":00" <> tz)
-          locktime = DateTime.to_unix(ts)
+          DateTime.to_unix(ts)
       end
 
     seq =
@@ -136,7 +147,7 @@ defmodule BexWeb.AdLive do
       end
 
     if a !== 0 and a <= balance and byte_size(c) <= 800 do
-      send(self(), {:do_send, a, c, locktime, seq})
+      send(self(), {:do_send, a, c, locktime, seq, sighash |> String.to_integer()})
     end
 
     {:noreply, assign(socket, :sending, true) |> assign(:content, c)}
@@ -151,11 +162,11 @@ defmodule BexWeb.AdLive do
     {:noreply, assign(socket, %{loading: false, balance: balance})}
   end
 
-  def handle_info({:do_send, 0, _, _, _}, socket) do
+  def handle_info({:do_send, 0, _, _, _, _}, socket) do
     {:noreply, socket}
   end
 
-  def handle_info({:do_send, a, c, locktime, seq}, socket) do
+  def handle_info({:do_send, a, c, locktime, seq, sighash}, socket) when is_integer(sighash) do
     key = socket.assigns.key
     ad_count = socket.assigns.ad_count + 1
     balance = socket.assigns.balance
@@ -164,10 +175,11 @@ defmodule BexWeb.AdLive do
       CoinManager.send_opreturn(key.id, [c], @coin_sat,
         change_to: "1FUBsjgSju23wGqR47ywynyynigxvtTCyZ",
         locktime: locktime,
-        sequence: seq
+        sequence: seq,
+        sighash_types: [sighash]
       )
 
-    send(self(), {:do_send, a - 1, c, locktime, seq})
+    send(self(), {:do_send, a - 1, c, locktime, seq, sighash})
 
     :timer.sleep(500)
 
