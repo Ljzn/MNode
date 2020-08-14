@@ -22,6 +22,7 @@ defmodule Bex.Wallet.PrivateKey do
     belongs_to :parent_key, PrivateKey, foreign_key: :parent_key_id
     has_many :child_keys, PrivateKey, foreign_key: :parent_key_id
     has_many :utxos, Utxo
+
     # has_many :documents, Document, foreign_key: :private_key_id
 
     timestamps()

@@ -11,7 +11,10 @@ defmodule Paymail do
     :version
   ]
 
+  # capabilities
   @ppv1 "f12f968c92d6"
+  @address "paymentDestination"
+
   @dir "./priv/avatars"
 
   def parse(mail) do
@@ -20,6 +23,7 @@ defmodule Paymail do
     {version, capabilities} = cap(api)
     {nickname, avatar_url} = profile(capabilities[@ppv1], username, host)
     avatar_path = download_avatar(avatar_url, mail)
+    address = payment_destination(capabilities[@address], username, host)
 
     %__MODULE__{
       username: username,
@@ -29,7 +33,8 @@ defmodule Paymail do
       capabilities: capabilities,
       nickname: nickname,
       avatar_url: avatar_url,
-      avatar_path: avatar_path
+      avatar_path: avatar_path,
+      address: address
     }
   end
 
@@ -51,15 +56,24 @@ defmodule Paymail do
   end
 
   def profile(url, name, host) do
-    resp =
-      url
-      |> String.replace("{alias}", name)
-      |> String.replace("{domain.tld}", host)
-      |> HTTPoison.get!()
+    resp = get(url, name, host)
 
     data = resp.body |> Jason.decode!()
 
     {data["name"], data["avatar"]}
+  end
+
+  defp get(url, name, host) do
+    url
+    |> String.replace("{alias}", name)
+    |> String.replace("{domain.tld}", host)
+    |> HTTPoison.get!()
+  end
+
+  def payment_destination(url, name, host) do
+    "http://bsvalias.org/04-01-basic-address-resolution.html"
+    # resp = get(url, name, host)
+    # data = resp.body |> IO.inspect()
   end
 
   def download_avatar(url, mail) do

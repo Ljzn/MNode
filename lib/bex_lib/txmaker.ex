@@ -346,7 +346,12 @@ defmodule BexLib.Txmaker do
        do: :binary.copy(<<0>>, 32)
 
   defp get_prevouts_hash(inputs, _sighash_type) do
-    double_sha256(join(for i <- inputs, do: [hex_to_bytes(i.txid) |> Binary.reverse(), i.index |> to_bytes(4, :little)] ))
+    double_sha256(
+      join(
+        for i <- inputs,
+            do: [hex_to_bytes(i.txid) |> Binary.reverse(), i.index |> to_bytes(4, :little)]
+      )
+    )
   end
 
   defp get_sequence_hash(_inputs, sighash_type, _)

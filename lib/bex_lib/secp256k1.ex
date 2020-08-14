@@ -16,6 +16,7 @@ defmodule BexLib.Secp256k1 do
   """
 
   alias BexLib.DERSig
+
   # alias BexLib.Crypto
   # import Decimal, only: [mult: 2, sub: 2, div_int: 2, add: 2]
 

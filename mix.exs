@@ -42,7 +42,7 @@ defmodule Bex.MixProject do
       {:gettext, "~> 0.11"},
       {:hackney, ">= 1.15.2", override: true},
       {:httpoison, "~> 1.5", override: true},
-      {:jason, "~> 1.0"},
+      {:jason, "~> 1.2", override: true},
       {:logger_file_backend, "~> 0.0.10"},
       {:nodejs, "~> 1.0"},
       {:phoenix, "~> 1.4.9"},

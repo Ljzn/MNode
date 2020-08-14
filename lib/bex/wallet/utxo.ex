@@ -17,6 +17,7 @@ defmodule Bex.Wallet.Utxo do
   alias __MODULE__
   alias Bex.CoinManager
   require Logger
+
   # alias Bex.Wallet.Mission
 
   @permission_sat Decimal.cast(546)

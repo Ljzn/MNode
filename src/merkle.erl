@@ -1,6 +1,7 @@
 -module(merkle).
--export([start/1, pairs/1]).
+-export([start/1, pairs_merkle/1]).
 
+%% calculate the merkle root of a block.
 start(H) ->
   R = merkle_root(H),
   print_hash(R).
@@ -37,6 +38,7 @@ transactions(100002) ->
 merkle_root(H) ->
   pairs_merkle(transactions(H)).
 
+%% do calculate, input: list of transactions
 pairs_merkle([H]) ->
   H;
 pairs_merkle(L) ->

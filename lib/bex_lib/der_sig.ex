@@ -57,6 +57,21 @@ defmodule BexLib.DERSig do
       byte_size(der.s), der.s::binary>>
   end
 
+  def encode(r, s) do
+    r = :binary.encode_unsigned(r)
+    s = :binary.encode_unsigned(s)
+
+    struct(__MODULE__, %{
+      type: 48,
+      r_type: 2,
+      s_type: 2,
+      r: r,
+      s: s,
+      length: byte_size(r) + byte_size(s) + 4
+    })
+    |> serialize()
+  end
+
   @doc """
   Normalize DER signature.
 
