@@ -69,6 +69,7 @@ defmodule BexLib.DERSig do
       s: s,
       length: byte_size(r) + byte_size(s) + 4
     })
+    |> IO.inspect()
     |> serialize()
   end
 
