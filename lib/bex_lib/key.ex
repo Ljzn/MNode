@@ -22,7 +22,7 @@ defmodule BexLib.Key do
 
   def private_key_to_public_key(priv) do
     {publickey, _priv} = :crypto.generate_key(:ecdh, :secp256k1, priv)
-    compress(publickey)
+    # compress(publickey)
   end
 
   def private_key_to_public_key_hash(priv) do

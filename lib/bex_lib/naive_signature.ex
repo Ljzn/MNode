@@ -50,4 +50,16 @@ defmodule BexLib.NaiveSignature do
 
     verify(signature, m, pub)
   end
+
+  def test1() do
+    m = "hello"
+    s1 = 0x8234DA68A1ACC82378667E5ED4A15C051FF96D7630761323E92C2EB493B95A2C
+
+    %{s: s} = onchain_sign(m, s1) |> DERSig.parse()
+
+    sign =
+      100_588_391_255_283_354_481_116_035_920_623_968_673_982_903_913_843_348_902_661_218_794_714_437_180_015
+
+    s == :binary.encode_unsigned(sign)
+  end
 end
